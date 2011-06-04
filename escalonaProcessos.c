@@ -71,18 +71,20 @@ void criaThreads(pthread_t threads[1]) {
 }
 
 void executaProcessos() {
-    int i, pid;
+    int i, pid, status;
     processo *p1;
     fila_processos *fila;
     
     fila = fila_prior->fila1;
     while (fila != NULL) {
-        if (pid != 0) {
-            pid = fork();
-        }
-        if (pid ==0) {
+        if ((pid = fork()) == 0) {
             p1 = fila->p1;
-            execv(p1->nome_arquivo, p1->parametros);
+            status = execv(p1->nome_arquivo, p1->parametros);
+            if (status == -1) {
+                printf("O programa %s não existe.\n", p1->nome_arquivo);
+                exit(-1);
+            }
+            exit(0);
             break;
         }
         fila = fila->prox;
@@ -95,6 +97,8 @@ void *start() {
 
     criaThreads(threads);
     executaProcessos();
+    
+    printf("Fim da execução!");
     
     pthread_exit(NULL);
 }

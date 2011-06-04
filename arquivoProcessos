@@ -1,5 +1,2 @@
-Processo1 1 -out -r
-Processo2 2 -run -l -s -t
-Processo3 2 -seven -lah
-Processo4 3 -fuck -nohup
-
+/bin/ls 1 -l -a
+/bin/ps 1 -aux
