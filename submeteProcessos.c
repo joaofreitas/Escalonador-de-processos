@@ -1,27 +1,6 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-typedef struct estrutura_processo {
-	char *nome_arquivo;
-	char *parametros[10];
-	int prioridade;
-	int num_params;
-} processo;
-
-typedef struct estrutura_fila {
-	processo *p1;
-	struct estrutura_fila *prox;
-} fila_processos;
-
-typedef struct estrutura_fila_prioridades {
-	fila_processos *fila1;     //Processo de prioridade 1
-	fila_processos *fila2;     //Processo de prioridade 2
-	fila_processos *fila3;     //Processo de prioridade 3
-} fila_prioridades;
+#include "submeteProcessos.h"
 
 //TODO Melhorar isso!
-
 void insereParametros(processo *p1, char *parametros) {
     char *copy;
     char *parametro;
@@ -58,19 +37,6 @@ processo *cria_processo(char *arquivo, int prioridade) {
     return p1;
 }
 
-fila_prioridades *criaFila() {
-    fila_prioridades *fila;
-    
-    fila = malloc(sizeof(fila_prioridades));
-    
-    fila->fila1 = NULL;
-    fila->fila2 = NULL;
-    fila->fila3 = NULL;
-    
-    return fila;
-    
-}
-
 void insereProcesso(fila_processos **fila, processo *proccess) {
     fila_processos *filaAux, *proximo_elemento;
 
@@ -103,40 +69,18 @@ void insereProcessoFilaPrioridades(fila_prioridades *fila, processo *proccess) {
     }
 }
 
-//Função que imprime o processo, NAO VAI ESTAR NO TRABALHO FINAL
-void imprimeProcesso(fila_processos *fila) {
-    processo *p1;
-    
-    while(fila != NULL) {
-        p1 = fila->p1;
-        printf("Nome: %s |", p1->nome_arquivo);
-        printf("Prioridade: %d |", p1->prioridade);
-        printf("Num Params: %d |", p1->num_params);
-        printf("Primeiro Param: %s\n", p1->parametros[0]);
-        fila = fila->prox;
-    }
-}
-
-//Função que imprime a fila, NAO VAI ESTAR NO TRABALHO FINAL
-void imprimeFila(fila_prioridades *fila_prior) {
-    
-    printf("FILA 1:\n");
-    imprimeProcesso(fila_prior->fila1);
-    printf("FILA 2:\n");
-    imprimeProcesso(fila_prior->fila2);
-    printf("FILA 3:\n");
-    imprimeProcesso(fila_prior->fila3);
-}
-
-void carregaProcessosFila() {
+void *submeterProcessos(void *fila) {
     char *nome_processo, *parametros, *lista_parametros;
     fila_prioridades *fila_prior;
     int prioridade = 0, qtd_chars = 0;
     FILE *fp;
     processo *p1;
     
-    fila_prior = criaFila();
-
+/*    while (thread_executando)
+    
+    pthread_cond_wait(&executa_submissao, (int *)1);*/
+    
+    fila_prior = (fila_prioridades *) fila;
     fp = fopen("arquivoProcessos", "r");
 
     while (!feof(fp)) {
@@ -156,16 +100,8 @@ void carregaProcessosFila() {
         }
     }
     
-    imprimeFila(fila_prior);
+    //imprimeFila(fila_prior);
+    
     fclose(fp);
-
-}
-
-void start() {
-    carregaProcessosFila();
-}
-
-int main() {
-    start();
-    return 0;
+    pthread_exit(NULL);
 }
