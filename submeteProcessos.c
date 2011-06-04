@@ -1,7 +1,7 @@
 #include "submeteProcessos.h"
 
 //TODO Melhorar isso!
-void insereParametros(processo *p1, char *parametros) {
+void insereParametros(processo *p1, char *nome_programa, char *parametros) {
     char *copy;
     char *parametro;
     int n = 0;
@@ -11,10 +11,13 @@ void insereParametros(processo *p1, char *parametros) {
     p1->parametros[n] = malloc(sizeof(char));
     
     strcpy(copy, parametros);
+    strcpy(p1->parametros[n], nome_programa);
+
+    n = 1;
     
     parametro = strtok(copy," ");
+    p1->parametros[n] = malloc(sizeof(char));
     strcpy(p1->parametros[n], parametro);
-    n = 1;
 
     while ( (parametro = strtok(NULL," ")) != NULL )
     {
@@ -93,7 +96,7 @@ void *submeterProcessos(void *fila) {
 
             qtd_chars = fscanf(fp, "%[^\n]", parametros);
             if (qtd_chars > 0) {
-                insereParametros(p1, parametros);
+                insereParametros(p1, nome_processo, parametros);
             }
             
             insereProcessoFilaPrioridades(fila_prior, p1);

@@ -72,6 +72,7 @@ void criaThreads(pthread_t threads[1]) {
 
 void executaProcessos() {
     int i, pid;
+    processo *p1;
     fila_processos *fila;
     
     fila = fila_prior->fila1;
@@ -80,7 +81,8 @@ void executaProcessos() {
             pid = fork();
         }
         if (pid ==0) {
-            execv();
+            p1 = fila->p1;
+            execv(p1->nome_arquivo, p1->parametros);
             break;
         }
         fila = fila->prox;
