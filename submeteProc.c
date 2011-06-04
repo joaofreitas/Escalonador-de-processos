@@ -128,7 +128,7 @@ void imprimeFila(fila_prioridades *fila_prior) {
     imprimeProcesso(fila_prior->fila3);
 }
 
-int main() {
+void carregaProcessosFila() {
     char *nome_processo, *parametros, *lista_parametros;
     fila_prioridades *fila_prior;
     int prioridade = 0, qtd_chars = 0;
@@ -159,5 +159,13 @@ int main() {
     imprimeFila(fila_prior);
     fclose(fp);
 
+}
+
+void start() {
+    carregaProcessosFila();
+}
+
+int main() {
+    start();
     return 0;
 }
