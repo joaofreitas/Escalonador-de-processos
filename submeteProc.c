@@ -10,6 +10,8 @@ typedef struct estrutura_processo {
 } processo;
 
 //TODO Melhorar isso!
+
+//teste
 void insereParametros(processo *p1, char *parametros) {
     char *copy;
     char *parametro;
