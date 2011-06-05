@@ -1,2 +1,2 @@
-/bin/ls 1 -l -a
-/bin/ps 1 -aux
+/bin/ls 1 -l -a -h
+/bin/ps 1 aux

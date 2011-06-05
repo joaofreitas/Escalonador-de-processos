@@ -25,6 +25,7 @@ fila_prioridades *criaFila() {
 
 //Função que imprime o processo, NAO VAI ESTAR NO TRABALHO FINAL
 void imprimeProcesso(fila_processos *fila) {
+    int i;
     processo *p1;
     
     while(fila != NULL) {
@@ -32,7 +33,11 @@ void imprimeProcesso(fila_processos *fila) {
         printf("Nome: %s |", p1->nome_arquivo);
         printf("Prioridade: %d |", p1->prioridade);
         printf("Num Params: %d |", p1->num_params);
-        printf("Primeiro Param: %s\n", p1->parametros[0]);
+        printf("Parametros: ");
+        for (i=0; i < p1->num_params; i++) {
+            printf("%s ", p1->parametros[i]);
+        }
+        printf("\n");
         fila = fila->prox;
     }
 }
