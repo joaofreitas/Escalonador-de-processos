@@ -4,3 +4,5 @@
 #include "submeteProcessos.h"
 
 void *start(void *politica);
+
+#define QUANTUM 1

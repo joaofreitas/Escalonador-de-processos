@@ -1,13 +1,8 @@
 #include "escalonaProcessos.h"
 
-#define FF 1
-#define RR 2
-#define PE 3
-#define PD 4
-#define escalonamento 1
-
 pthread_t threads_auxiliares[3];
 pthread_cond_t executa_submissao;
+pthread_mutex_t fila_procs_mutex;   //Mutex que controla o acesso a fila de processos
 fila_ready *fila_procs;     //Fila de todos os processos;
 
 fila_ready *criaFila(char *politica_escalonamento) {
@@ -26,6 +21,21 @@ fila_ready *criaFila(char *politica_escalonamento) {
     }
 
     return fila;
+}
+
+void mudaOrdemFila(fila_processos **fila) {
+    fila_processos *fila_primeiro_elemento, *fila_ultimo_elemento;
+    
+    fila_primeiro_elemento = *fila;
+    fila_ultimo_elemento = *fila;
+
+    while (fila_ultimo_elemento->prox != NULL) {
+        fila_ultimo_elemento = fila_ultimo_elemento->prox;
+    }
+    
+    fila_ultimo_elemento->prox = fila_primeiro_elemento;
+    *fila = fila_primeiro_elemento->prox;
+    
 }
 
 //Função que imprime o processo, NAO VAI ESTAR NO TRABALHO FINAL
@@ -70,6 +80,7 @@ void criaProcessos(fila_processos **fila) {
     processo *p1;
     fila_processos *fila_aux;
     
+    pthread_mutex_lock(&fila_procs_mutex);
     fila_aux = *fila;
 
     while (fila_aux != NULL) {
@@ -83,9 +94,9 @@ void criaProcessos(fila_processos **fila) {
         }
         p1->pid = pid;
         kill(pid, SIGTSTP);
-        printf("Processo %s criado\n", p1->nome_arquivo);
         fila_aux = fila_aux->prox;
     }
+    pthread_mutex_unlock(&fila_procs_mutex);
 }
 
 void *executaProcessos() {
@@ -98,7 +109,7 @@ void *executaProcessos() {
         criaProcessos(&(fila_procs->fila_union.fila_prior.fila2));
     }
     imprimeFila(fila_procs);
-    printf("Todos os processos criados com sucesso!\n");
+    pthread_exit(NULL);
 }
 
 void criaThreads(pthread_t threads[1], char *politica_escalonamento) {
@@ -110,8 +121,9 @@ void criaThreads(pthread_t threads[1], char *politica_escalonamento) {
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
     /* Initialize and set thread detached attribute */
     /*pthread_cond_init (&executa_submissao, NULL);*/
-   
+
     fila_procs = criaFila(politica_escalonamento);
+
     thread_status1 = pthread_create(&threads[0], &attr, submeterProcessos, (void *) fila_procs);
     pthread_join(threads[0], NULL);
     
@@ -125,21 +137,53 @@ void criaThreads(pthread_t threads[1], char *politica_escalonamento) {
 }
 
 void *escalonamentoFCFS() {
- /*   int i, pid, status;
+   int i, pid, status;
+    processo *p1;
+    fila_processos *fila, *fila_aux;
+    
+    fila = fila_procs->fila_union.fila_sem_prior.fila;
+
+    /* Pega o primeiro elemento da fila e executa */
+    while (fila != NULL) {
+        p1 = fila->p1;
+        pid = p1->pid;
+        printf("Executando o processo %s\n", p1->nome_arquivo);
+        kill(pid, SIGCONT);
+        waitpid(pid ,NULL, 0);
+
+        pthread_mutex_lock(&fila_procs_mutex);
+        fila_aux = fila;
+        fila = fila->prox;
+        fila_procs->fila_union.fila_sem_prior.fila = fila;
+        free(fila_aux);
+        pthread_mutex_unlock(&fila_procs_mutex);
+    }
+    pthread_exit(NULL);
+}
+
+void *escalonamentoRR() {
+   int i, pid, status;
     processo *p1;
     fila_processos *fila;
     
-    fila = fila_procs->fila0;
-*/    
+    fila = fila_procs->fila_union.fila_sem_prior.fila;
+
     /* Pega o primeiro elemento da fila e executa */
-/*    while (fila != NULL) {
+    while (fila != NULL) {
         p1 = fila->p1;
         pid = p1->pid;
+        printf("Executando o processo %s\n", p1->nome_arquivo);
         kill(pid, SIGCONT);
-        while(kill(pid, 0));
-        fila = fila->prox;
+
+        sleep(QUANTUM);
+        printf("Dei o quantum\n");
+        
+        kill(pid, SIGTSTP);
+        pthread_mutex_lock(&fila_procs_mutex);
+        mudaOrdemFila(&(fila_procs->fila_union.fila_sem_prior.fila));
+        pthread_mutex_unlock(&fila_procs_mutex);
     }
-*/
+    pthread_exit(NULL);
 }
 
 
@@ -147,11 +191,15 @@ void *start(void *politica) {
     pthread_t threads[3];
     char *politica_escalonamento;
 
+    pthread_mutex_init(&fila_procs_mutex, NULL);
+    
     politica_escalonamento = (char *) politica;
     criaThreads(threads, politica_escalonamento);
 
-    if (strcmp(politica_escalonamento, "RR") == 0) {
+    if (strcmp(politica_escalonamento, "FF") == 0) {
         pthread_create(&threads[2], NULL, escalonamentoFCFS, NULL);
+    } else if (strcmp(politica_escalonamento, "RR") == 0) {
+        pthread_create(&threads[2], NULL, escalonamentoRR, NULL);
     }
     
     printf("Fim da execução!");

@@ -40,6 +40,7 @@ typedef struct estrutura_fila_ready {
 
 extern pthread_cond_t executa_submissao;
 extern pthread_cond_t encerra_thread;
+extern pthread_mutex_t fila_procs_mutex;
 
 #define FILA_COM_PRIORIDADES 0
 #define FILA_SEM_PRIORIDADES 1
