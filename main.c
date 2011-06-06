@@ -9,7 +9,9 @@ int main(int argc, char *argv[]) {
     pthread_t thread_principal[1];
     
     if ((argc != 2)) {
-        printf("Por favor, execute novamente informando a forma do escalonamento:\n");
+        printf("Por favor, execute novamente informando o tipo do escalonamento:\n");
+        printf("FORMA DE EXECUÇÃO:\n./escalonaprocessos <tipo escalonamento>\n");
+        printf("TIPOS DE ESCALONAMENTO:\n");
         printf("FF\tFirst Come, First Served\n");
         printf("RR\tRound Robin\n");
         exit(0);

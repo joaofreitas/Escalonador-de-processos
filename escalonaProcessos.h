@@ -5,4 +5,3 @@
 
 void *start(void *politica);
 
-#define QUANTUM 1
