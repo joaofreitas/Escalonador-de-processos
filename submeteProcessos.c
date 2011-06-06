@@ -72,7 +72,7 @@ void *submeterProcessos(void *fila) {
         n = copiaParametro(&(p1->parametros[n]), nome_processo, n);
 
         while ((proximo_char = getc(fp)) != '\n') {
-            parametro = malloc(sizeof(char *)); 
+            parametro = malloc(sizeof(char *) * 50); 
             fscanf(fp, "%s", parametro);
             n = copiaParametro(&(p1->parametros[n]), parametro, n);
         }
@@ -88,7 +88,7 @@ void *submeterProcessos(void *fila) {
         insereProcessoFila(fila, p1);
         pthread_mutex_unlock(&fila_procs_mutex);
 
-        nome_processo = malloc(sizeof(char *));
+        nome_processo = malloc(sizeof(char *)* 50); // Nome do processo pode ter no máximo 50 caracteres
     }
     
     fclose(fp);

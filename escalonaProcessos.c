@@ -28,6 +28,7 @@ fila_processos * mudarOrdemFila(fila_processos **fila) {
     fila_processos *fila_primeiro_elemento, *fila_ultimo_elemento;
     
     fila_primeiro_elemento = *fila;
+    
 
     if (fila_primeiro_elemento != NULL) {
         fila_ultimo_elemento = *fila;
@@ -39,8 +40,11 @@ fila_processos * mudarOrdemFila(fila_processos **fila) {
             
             fila_ultimo_elemento->prox = fila_primeiro_elemento;
             *fila = fila_primeiro_elemento->prox;
+            fila_primeiro_elemento->prox = NULL;
         }
     }
+    
+    return *fila;
 }
 
 fila_processos * removerFila(fila_processos **fila) {
@@ -144,7 +148,7 @@ void criaThreads(pthread_t threads[1], char *politica_escalonamento) {
 
     thread_status1 = pthread_create(&threads[0], &attr, submeterProcessos, (void *) fila_procs);
     pthread_join(threads[0], NULL);
-    
+
     thread_status2 = pthread_create(&threads[1], NULL, executaProcessos, NULL);
     
 
@@ -152,6 +156,7 @@ void criaThreads(pthread_t threads[1], char *politica_escalonamento) {
         printf("ERROR; return code from pthread_create() is %d %d\n", thread_status1, thread_status2);
         exit(-1);
     }
+
 }
 
 void *escalonamentoFCFS() {
@@ -188,31 +193,25 @@ void *escalonamentoRR() {
         p1 = fila->p1;
         pid = p1->pid;
         if (pid > 0) {  //Essa condição verifica se o processo foi executado. Caso sim, seu pid certamente será maior que 0
-            printf("Executando o processo %s de pid %d\n", p1->nome_arquivo, p1->pid);
-            kill(pid, SIGCONT);
+            //printf("Executando o processo %s de pid %d\n", p1->nome_arquivo, p1->pid);
 
+            kill(pid, SIGCONT);
             sleep(1);
-            
             kill(pid, SIGTSTP);
-            //Verifica se houve algum processo parado com -1, o parametro WNOHANG serve para não deixar esperando eternamente.
             
+            //Verifica se houve algum processo parado com -1, o parametro WNOHANG serve para não deixar esperando eternamente.
             childPid = waitpid(-1, &status, WNOHANG);
-            printf("Processo parado %s de pid %d, status %d\n", p1->nome_arquivo, p1->pid, childPid);
             if (childPid > 0) {
+                printf("Processo %s concluido com sucesso\n", p1->nome_arquivo);
                 pthread_mutex_lock(&fila_procs_mutex);
-                printf("Removerei um elemento\n");
                 fila = removerFila(&(fila_procs->fila_union.fila_sem_prior.fila));
-                printf("Removido\n");
                 pthread_mutex_unlock(&fila_procs_mutex);
             } else {
                 pthread_mutex_lock(&fila_procs_mutex);
-                mudarOrdemFila(&(fila_procs->fila_union.fila_sem_prior.fila));
+                fila = mudarOrdemFila(&(fila_procs->fila_union.fila_sem_prior.fila));
                 pthread_mutex_unlock(&fila_procs_mutex);
             }
-            
-            if (fila == NULL) {
-                printf("Fila está nula, vou terminar!\n");
-            }
+
         }
     }
     pthread_exit(NULL);
@@ -239,7 +238,7 @@ void *start(void *politica) {
     }
 
     pthread_join(threads[2], NULL);
-    
+
     printf("Fim da execução!");
     
     pthread_exit(NULL);

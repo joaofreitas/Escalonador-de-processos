@@ -15,10 +15,10 @@ int main() {
         printf("Arquivo não aberto\n");
     }
     
-    nome_arquivo = malloc(sizeof(char *));
+    nome_arquivo = malloc(sizeof(char *) * 50);
     while ((fscanf(fp, "%s %d", nome_arquivo, &prioridade)) != EOF) {
         n = 0;
-        parametros[n] = malloc(sizeof(char *));
+        parametros[n] = malloc(sizeof(char *) * 50);
         strcpy(parametros[n], nome_arquivo);
         n = 1;
         while ((proximo_char = getc(fp)) != '\n') {
