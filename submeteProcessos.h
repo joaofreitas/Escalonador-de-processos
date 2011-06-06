@@ -3,9 +3,12 @@
 #include <string.h>
 #include <pthread.h>
 #include <signal.h>
+#include <sys/time.h>
+#include <time.h>
 
 typedef struct estrutura_processo {
     int pid;
+	time_t inicio_execucao;
 	int prioridade;
 	int num_params;
 	char *nome_arquivo;

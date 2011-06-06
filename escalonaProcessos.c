@@ -115,6 +115,7 @@ void criaProcessos(fila_processos **fila) {
             exit(1);
         }
         p1->pid = pid;
+        time(&p1->inicio_execucao);
         kill(pid, SIGTSTP);
         fila_aux = fila_aux->prox;
     }
@@ -188,6 +189,7 @@ void *escalonamentoRR() {
     int pid, status, childPid;
     processo *p1;
     fila_processos *fila;
+    time_t fim_execucao;
 
     pthread_mutex_lock(&fila_procs_mutex);
     fila = fila_procs->fila_union.fila_sem_prior.fila;
@@ -207,7 +209,10 @@ void *escalonamentoRR() {
             //Verifica se houve algum processo parado com -1, o parametro WNOHANG serve para não deixar esperando eternamente.
             childPid = waitpid(-1, &status, WNOHANG);
             if (childPid > 0) {
-                printf("\nProcesso %s concluido com sucesso\n", p1->nome_arquivo);
+            
+                time(&fim_execucao);
+                printf("\nProcesso %s concluido com sucesso. Tempo total %ld\n", p1->nome_arquivo, (fim_execucao - p1->inicio_execucao));
+
                 pthread_mutex_lock(&fila_procs_mutex);
                 fila = removerFila(&(fila_procs->fila_union.fila_sem_prior.fila));
                 pthread_mutex_unlock(&fila_procs_mutex);
