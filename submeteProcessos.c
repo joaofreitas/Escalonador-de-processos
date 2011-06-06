@@ -2,7 +2,7 @@
 
 int copiaParametro(char **parametros, char *parametro, int n) {
     
-    *parametros = malloc(sizeof(char *));
+    *parametros = malloc(sizeof(char *)*50); // Nome dos parâmetros pode ter no máximo 50 caracteres
     strcpy(*parametros, parametro);
     n++;
     return n;
@@ -40,33 +40,32 @@ void insereProcesso(fila_processos **fila, processo *proccess) {
     }
 }
 
-void insereProcessoFilaPrioridades(fila_prioridades *fila, processo *proccess) {
-    if (proccess->prioridade == 1) {
-        insereProcesso(&(fila->fila1), proccess);
+void insereProcessoFila(fila_ready *fila, processo *proccess) {
+    if (fila->tipo_fila == FILA_SEM_PRIORIDADES) { 
+        insereProcesso(&(fila->fila_union.fila_sem_prior.fila), proccess);
     } else {
-        if (proccess->prioridade == 2) {
-            insereProcesso(&(fila->fila2), proccess);
+        if (proccess->prioridade == 1) {
+            insereProcesso(&(fila->fila_union.fila_prior.fila0), proccess);
         } else {
-            insereProcesso(&(fila->fila3), proccess);
+            if (proccess->prioridade == 2) {
+                insereProcesso(&(fila->fila_union.fila_prior.fila1), proccess);
+            } else {
+                insereProcesso(&(fila->fila_union.fila_prior.fila2), proccess);
+            }
         }
     }
 }
 
 void *submeterProcessos(void *fila) {
     char *nome_processo, *parametro, proximo_char;
-    int prioridade = 0, n, i;
+    int prioridade = 0, tipo_fila, n;
     FILE *fp;
-    fila_prioridades *fila_prior;
     processo *p1;
-    
-/*    while (thread_executando)
-    
-    pthread_cond_wait(&executa_submissao, (int *)1);*/
-    
-    fila_prior = (fila_prioridades *) fila;
+
+    fila = (fila_ready *) fila;
     fp = fopen("arquivoProcessos", "r");
     
-    nome_processo = malloc(sizeof(char *));
+    nome_processo = malloc(sizeof(char *)* 50); // Nome do processo pode ter no máximo 50 caracteres
     while ((fscanf(fp, "%s %d", nome_processo, &prioridade)) != EOF) {
         n = 0;
         p1 = cria_processo(nome_processo, prioridade);
@@ -75,11 +74,11 @@ void *submeterProcessos(void *fila) {
         while ((proximo_char = getc(fp)) != '\n') {
             parametro = malloc(sizeof(char *)); 
             fscanf(fp, "%s", parametro);
-            n = copiaParametro(&(p1->parametros[n]), parametro, n);\
+            n = copiaParametro(&(p1->parametros[n]), parametro, n);
         }
         p1->num_params = n;
         p1->parametros[n] = (char *)0;
-        insereProcessoFilaPrioridades(fila_prior, p1);
+        insereProcessoFila(fila, p1);
 
         nome_processo = malloc(sizeof(char *));
     }

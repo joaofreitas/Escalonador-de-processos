@@ -8,20 +8,25 @@
 
 pthread_t threads_auxiliares[3];
 pthread_cond_t executa_submissao;
-fila_prioridades *fila_prior;
+fila_ready *fila_procs;     //Fila de todos os processos;
 
-fila_prioridades *criaFila() {
-    fila_prioridades *fila;
+fila_ready *criaFila(char *politica_escalonamento) {
+    fila_ready *fila;
     
-    fila = malloc(sizeof(fila_prioridades));
+    fila = malloc(sizeof(fila_ready));
     
-    fila->fila1 = NULL;
-    fila->fila2 = NULL;
-    fila->fila3 = NULL;
-    
+    if ((strcmp(politica_escalonamento, "RR") == 0) || ((strcmp(politica_escalonamento, "FF") == 0))){
+        fila->tipo_fila = FILA_SEM_PRIORIDADES;
+        fila->fila_union.fila_sem_prior.fila = NULL;
+    } else {
+        fila->tipo_fila = FILA_COM_PRIORIDADES;
+        fila->fila_union.fila_prior.fila0 = NULL;
+        fila->fila_union.fila_prior.fila1 = NULL;
+        fila->fila_union.fila_prior.fila2 = NULL;
+    }
+
     return fila;
 }
-
 
 //Função que imprime o processo, NAO VAI ESTAR NO TRABALHO FINAL
 void imprimeProcesso(fila_processos *fila) {
@@ -31,6 +36,7 @@ void imprimeProcesso(fila_processos *fila) {
     while(fila != NULL) {
         p1 = fila->p1;
         printf("Nome: %s |", p1->nome_arquivo);
+        printf("PID: %d |", p1->pid);
         printf("Prioridade: %d |", p1->prioridade);
         printf("Num Params: %d |", p1->num_params);
         printf("Parametros: ");
@@ -43,65 +49,110 @@ void imprimeProcesso(fila_processos *fila) {
 }
 
 //Função que imprime a fila, NAO VAI ESTAR NO TRABALHO FINAL
-void imprimeFila(fila_prioridades *fila_prior) {
-    
-    printf("FILA 1:\n");
-    imprimeProcesso(fila_prior->fila1);
-    printf("FILA 2:\n");
-    imprimeProcesso(fila_prior->fila2);
-    printf("FILA 3:\n");
-    imprimeProcesso(fila_prior->fila3);
-}
+void imprimeFila(fila_ready *fila) {
 
-void criaThreads(pthread_t threads[1]) {
-    int rc;
-    pthread_attr_t attr;
-
-    /* Initialize and set thread detached attribute */
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-    
-    /* Initialize and set thread detached attribute */
-    /*pthread_cond_init (&executa_submissao, NULL);*/
-   
-    fila_prior = criaFila();
-    rc = pthread_create(&threads[1], &attr, submeterProcessos, (void *) fila_prior);
-    pthread_join(threads[1], NULL);
-    imprimeFila(fila_prior);
-
-    if (rc){
-        printf("ERROR; return code from pthread_create() is %d\n", rc);
-        exit(-1);
+    if (fila->tipo_fila == FILA_SEM_PRIORIDADES) {
+        printf("FILA:\n");
+        imprimeProcesso(fila->fila_union.fila_sem_prior.fila);
+    } else {
+        printf("FILA 0:\n");
+        imprimeProcesso(fila->fila_union.fila_prior.fila0);
+        printf("FILA 1:\n");
+        imprimeProcesso(fila->fila_union.fila_prior.fila1);
+        printf("FILA 2:\n");
+        imprimeProcesso(fila->fila_union.fila_prior.fila2);
     }
 }
 
-void executaProcessos() {
-    int i, pid, status;
+/* Função que cria novos processo, porém paralisando todos antes da execução */
+void criaProcessos(fila_processos **fila) {
+    int pid, status;
     processo *p1;
-    fila_processos *fila;
+    fila_processos *fila_aux;
     
-    fila = fila_prior->fila1;
-    while (fila != NULL) {
+    fila_aux = *fila;
+
+    while (fila_aux != NULL) {
+        p1 = fila_aux->p1;
         if ((pid = fork()) == 0) {
-            p1 = fila->p1;
             status = execv(p1->nome_arquivo, p1->parametros);
             if (status == -1) {
                 printf("O programa %s não existe.\n", p1->nome_arquivo);
                 exit(-1);
             }
-            exit(0);
-            break;
         }
-        fila = fila->prox;
+        p1->pid = pid;
+        kill(pid, SIGTSTP);
+        printf("Processo %s criado\n", p1->nome_arquivo);
+        fila_aux = fila_aux->prox;
     }
 }
 
-void *start() {
-    pthread_t threads[1];
-    printf("Criei!\n");
+void *executaProcessos() {
+    
+    if (fila_procs->tipo_fila == FILA_SEM_PRIORIDADES) {
+        criaProcessos(&(fila_procs->fila_union.fila_sem_prior.fila));
+    } else {
+        criaProcessos(&(fila_procs->fila_union.fila_prior.fila0));
+        criaProcessos(&(fila_procs->fila_union.fila_prior.fila1));
+        criaProcessos(&(fila_procs->fila_union.fila_prior.fila2));
+    }
+    imprimeFila(fila_procs);
+    printf("Todos os processos criados com sucesso!\n");
+}
 
-    criaThreads(threads);
-    executaProcessos();
+void criaThreads(pthread_t threads[1], char *politica_escalonamento) {
+    int thread_status1, thread_status2;
+    pthread_attr_t attr;
+
+    /* Initialize and set thread detached attribute */
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+    /* Initialize and set thread detached attribute */
+    /*pthread_cond_init (&executa_submissao, NULL);*/
+   
+    fila_procs = criaFila(politica_escalonamento);
+    thread_status1 = pthread_create(&threads[0], &attr, submeterProcessos, (void *) fila_procs);
+    pthread_join(threads[0], NULL);
+    
+    thread_status2 = pthread_create(&threads[1], NULL, executaProcessos, NULL);
+    
+
+    if (thread_status1 || thread_status2){
+        printf("ERROR; return code from pthread_create() is %d %d\n", thread_status1, thread_status2);
+        exit(-1);
+    }
+}
+
+void *escalonamentoFCFS() {
+ /*   int i, pid, status;
+    processo *p1;
+    fila_processos *fila;
+    
+    fila = fila_procs->fila0;
+*/    
+    /* Pega o primeiro elemento da fila e executa */
+/*    while (fila != NULL) {
+        p1 = fila->p1;
+        pid = p1->pid;
+        kill(pid, SIGCONT);
+        while(kill(pid, 0));
+        fila = fila->prox;
+    }
+*/
+}
+
+
+void *start(void *politica) {
+    pthread_t threads[3];
+    char *politica_escalonamento;
+
+    politica_escalonamento = (char *) politica;
+    criaThreads(threads, politica_escalonamento);
+
+    if (strcmp(politica_escalonamento, "RR") == 0) {
+        pthread_create(&threads[2], NULL, escalonamentoFCFS, NULL);
+    }
     
     printf("Fim da execução!");
     

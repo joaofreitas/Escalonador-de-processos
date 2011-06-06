@@ -1,2 +1,1 @@
-/bin/ls 1 -l -a -h
-/bin/ps 1 aux
+./processos/ackermanneee 1 4 1

@@ -8,8 +8,7 @@ int main(int argc, char *argv[]) {
     
     pthread_t thread_principal[1];
 
-    printf("Iniciando execução do processo\n");
-    rc = pthread_create(&thread_principal[1], NULL, start, NULL);
+    rc = pthread_create(&thread_principal[0], NULL, start, (void *) argv[1]);
 
     if (rc){
         printf("ERROR; return code from pthread_create() is %d\n", rc);
