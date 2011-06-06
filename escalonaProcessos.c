@@ -11,6 +11,7 @@ fila_ready *criaFila(char *politica_escalonamento) {
     fila = malloc(sizeof(fila_ready));
     
     if ((strcmp(politica_escalonamento, "RR") == 0) || ((strcmp(politica_escalonamento, "FF") == 0))){
+    
         fila->tipo_fila = FILA_SEM_PRIORIDADES;
         fila->fila_union.fila_sem_prior.fila = NULL;
     } else {
@@ -23,7 +24,7 @@ fila_ready *criaFila(char *politica_escalonamento) {
     return fila;
 }
 
-void mudarOrdemFila(fila_processos **fila) {
+fila_processos * mudarOrdemFila(fila_processos **fila) {
     fila_processos *fila_primeiro_elemento, *fila_ultimo_elemento;
     
     fila_primeiro_elemento = *fila;
@@ -31,27 +32,29 @@ void mudarOrdemFila(fila_processos **fila) {
     if (fila_primeiro_elemento != NULL) {
         fila_ultimo_elemento = *fila;
 
-        while (fila_ultimo_elemento->prox != NULL) {
-            fila_ultimo_elemento = fila_ultimo_elemento->prox;
+        if (fila_ultimo_elemento->prox != NULL) {
+            while (fila_ultimo_elemento->prox != NULL) {
+                fila_ultimo_elemento = fila_ultimo_elemento->prox;
+            }
+            
+            fila_ultimo_elemento->prox = fila_primeiro_elemento;
+            *fila = fila_primeiro_elemento->prox;
         }
-        
-        fila_ultimo_elemento->prox = fila_primeiro_elemento;
-        *fila = fila_primeiro_elemento->prox;
     }
 }
 
-void removerFila(fila_processos **fila) {
-    fila_processos *fila_elemento_removido;
+fila_processos * removerFila(fila_processos **fila) {
+    fila_processos *elemento_removido;
     
-    *fila = fila_elemento_removido;
-    if (fila_elemento_removido != NULL) {
-        *fila = fila_elemento_removido->prox;
+    elemento_removido = *fila;
+    if (elemento_removido != NULL) {
+        *fila = elemento_removido->prox;
         
-        free(fila_elemento_removido);
+        free(elemento_removido->p1);
+        free(elemento_removido);
     }
+    return *fila;
 }
-
-
 
 //Função que imprime o processo, NAO VAI ESTAR NO TRABALHO FINAL
 void imprimeProcesso(fila_processos *fila) {
@@ -104,8 +107,8 @@ void criaProcessos(fila_processos **fila) {
             status = execv(p1->nome_arquivo, p1->parametros);
             if (status == -1) {
                 printf("O programa %s não existe.\n", p1->nome_arquivo);
-                exit(-1);
             }
+            exit(1);
         }
         p1->pid = pid;
         kill(pid, SIGTSTP);
@@ -174,7 +177,7 @@ void *escalonamentoFCFS() {
 }
 
 void *escalonamentoRR() {
-    int pid, status;
+    int pid, status, childPid;
     processo *p1;
     fila_processos *fila;
 
@@ -184,22 +187,32 @@ void *escalonamentoRR() {
     while (fila != NULL) {
         p1 = fila->p1;
         pid = p1->pid;
-        printf("\nExecutando o processo %s\n", p1->nome_arquivo);
-        kill(pid, SIGCONT);
+        if (pid > 0) {  //Essa condição verifica se o processo foi executado. Caso sim, seu pid certamente será maior que 0
+            printf("Executando o processo %s de pid %d\n", p1->nome_arquivo, p1->pid);
+            kill(pid, SIGCONT);
 
-        sleep(1);
-        
-        //Se o envio de mensagem for -1, significa que o processo terminou!
-        status = kill(pid, SIGTSTP);
-        printf("Dei o quantum, status: %d\n", status);
-        if (status == -1) {
-            pthread_mutex_lock(&fila_procs_mutex);
-            removerFila(&(fila_procs->fila_union.fila_sem_prior.fila));
-            pthread_mutex_unlock(&fila_procs_mutex);
-        } else {
-            pthread_mutex_lock(&fila_procs_mutex);
-            mudarOrdemFila(&(fila_procs->fila_union.fila_sem_prior.fila));
-            pthread_mutex_unlock(&fila_procs_mutex);
+            sleep(1);
+            
+            kill(pid, SIGTSTP);
+            //Verifica se houve algum processo parado com -1, o parametro WNOHANG serve para não deixar esperando eternamente.
+            
+            childPid = waitpid(-1, &status, WNOHANG);
+            printf("Processo parado %s de pid %d, status %d\n", p1->nome_arquivo, p1->pid, childPid);
+            if (childPid > 0) {
+                pthread_mutex_lock(&fila_procs_mutex);
+                printf("Removerei um elemento\n");
+                fila = removerFila(&(fila_procs->fila_union.fila_sem_prior.fila));
+                printf("Removido\n");
+                pthread_mutex_unlock(&fila_procs_mutex);
+            } else {
+                pthread_mutex_lock(&fila_procs_mutex);
+                mudarOrdemFila(&(fila_procs->fila_union.fila_sem_prior.fila));
+                pthread_mutex_unlock(&fila_procs_mutex);
+            }
+            
+            if (fila == NULL) {
+                printf("Fila está nula, vou terminar!\n");
+            }
         }
     }
     pthread_exit(NULL);
@@ -224,7 +237,7 @@ void *start(void *politica) {
     } else if (strcmp(politica_escalonamento, "RR") == 0) {
         pthread_create(&threads[2], &attr, escalonamentoRR, NULL);
     }
-    
+
     pthread_join(threads[2], NULL);
     
     printf("Fim da execução!");

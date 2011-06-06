@@ -84,9 +84,9 @@ void *submeterProcessos(void *fila) {
              Preciso fazer esse controle por que a fila vai estar sendo acessada
             pelo escalonador também.
         */
-        pthread_mutex_lock (&fila_procs_mutex);
+        pthread_mutex_lock(&fila_procs_mutex);
         insereProcessoFila(fila, p1);
-        pthread_mutex_unlock (&fila_procs_mutex);
+        pthread_mutex_unlock(&fila_procs_mutex);
 
         nome_processo = malloc(sizeof(char *));
     }

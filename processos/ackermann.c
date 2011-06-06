@@ -17,5 +17,5 @@ int main(int argc, char *argv[]) {
     calls = 0;
     unsigned int value = naive_ackermann(( unsigned) atoi(argv[1]), (unsigned) atoi(argv[2]));
     printf("Valor: %u %u", value, calls);
-    return 0;
+    exit(1);
 }
