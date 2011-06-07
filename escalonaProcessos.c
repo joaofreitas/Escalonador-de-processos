@@ -1,9 +1,9 @@
 #include "escalonaProcessos.h"
 
 pthread_t threads_auxiliares[3];
-pthread_cond_t executa_submissao;
+pthread_cond_t executa_submissao;   //Controla a submissão de processos
 pthread_mutex_t fila_procs_mutex;   //Mutex que controla o acesso a fila de processos
-fila_ready *fila_procs;     //Fila de todos os processos;
+fila_ready *fila_procs;             //Fila de todos os processos;
 
 fila_ready *criaFila(char *politica_escalonamento) {
     fila_ready *fila;
@@ -161,7 +161,7 @@ void criaThreads(pthread_t threads[1], char *politica_escalonamento) {
 }
 
 void *escalonamentoFCFS() {
-   int i, pid, status;
+    int i, pid, status;
     processo *p1;
     fila_processos *fila;
     
@@ -169,15 +169,16 @@ void *escalonamentoFCFS() {
     fila = fila_procs->fila_union.fila_sem_prior.fila;
     pthread_mutex_unlock(&fila_procs_mutex);
 
-    /* Pega o primeiro elemento da fila e executa */
+    /* Enquanto houver processos, executa o primeiro que está na fila*/
     while (fila != NULL) {
         p1 = fila->p1;
         pid = p1->pid;
-        printf("\nExecutando o processo %s\n", p1->nome_arquivo);
+        printf("\n Executando o processo %s\n", p1->nome_arquivo);
         kill(pid, SIGCONT);
         waitpid(pid ,NULL, 0);
         printf("\nProcesso executado com sucesso %s\n", p1->nome_arquivo);
         
+        /*Protege a área de memória onde fica a fila de processos, para a exclusão do processo executado*/
         pthread_mutex_lock(&fila_procs_mutex);
         fila = removerFila(&(fila_procs->fila_union.fila_sem_prior.fila));
         pthread_mutex_unlock(&fila_procs_mutex);
@@ -227,24 +228,30 @@ void *escalonamentoRR() {
     pthread_exit(NULL);
 }
 
-
 void *start(void *politica) {
     char *politica_escalonamento;
     pthread_t threads[3];
     pthread_attr_t attr;
 
+    politica_escalonamento = (char *) politica;
+
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
-    pthread_mutex_init(&fila_procs_mutex, NULL);
-    
-    politica_escalonamento = (char *) politica;
+    pthread_mutex_init(&fila_procs_mutex, NULL);  
     criaThreads(threads, politica_escalonamento);
 
     if (strcmp(politica_escalonamento, "FF") == 0) {
         pthread_create(&threads[2], &attr, escalonamentoFCFS, NULL);
     } else if (strcmp(politica_escalonamento, "RR") == 0) {
         pthread_create(&threads[2], &attr, escalonamentoRR, NULL);
+    } else if(strcmp(politica_escalonamento, "PE") == 0) {
+        //TODO pthread_create(&threads[2], &attr, escalonamentoPE, NULL);
+    } else if(strcmp(politica_escalonamento, "PD") == 0) {
+        //TODO pthread_create(&threads[2], &attr, escalonamentoPD, NULL);
+    } else {
+        printf("Politica não reconhecida\n");
+        return 1;
     }
 
     pthread_join(threads[2], NULL);
@@ -253,23 +260,4 @@ void *start(void *politica) {
     
     pthread_exit(NULL);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
