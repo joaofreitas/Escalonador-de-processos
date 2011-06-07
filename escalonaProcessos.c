@@ -228,6 +228,66 @@ void *escalonamentoRR() {
     pthread_exit(NULL);
 }
 
+void executaFilaEscalonamentoPE(fila_processos *fila) {
+    int pid, status, childPid;
+    processo *p1;
+    fila_processos *inicio_fila;
+    time_t fim_execucao;
+
+    inicio_fila = fila;
+    while (fila != NULL) {
+        p1 = fila->p1;
+        pid = p1->pid;
+        if (pid > 0) {  //Essa condição verifica se o processo foi executado. Caso sim, seu pid certamente será maior que 0
+            //printf("Executando o processo %s de pid %d\n", p1->nome_arquivo, p1->pid);
+
+            kill(pid, SIGCONT);
+            sleep(1);
+            kill(pid, SIGTSTP);
+            
+            //Verifica se houve algum processo parado com -1, o parametro WNOHANG serve para não deixar esperando eternamente.
+            childPid = waitpid(-1, &status, WNOHANG);
+            if (childPid > 0) {
+            
+                time(&fim_execucao);
+                printf("\nProcesso %s concluido com sucesso. Tempo total %ld\n", p1->nome_arquivo, (fim_execucao - p1->inicio_execucao));
+
+                pthread_mutex_lock(&fila_procs_mutex);
+                fila = removerFila(&inicio_fila);
+                pthread_mutex_unlock(&fila_procs_mutex);
+            } else {
+                pthread_mutex_lock(&fila_procs_mutex);
+                fila = mudarOrdemFila(&inicio_fila);
+                pthread_mutex_unlock(&fila_procs_mutex);
+            }
+
+        }
+    }
+}
+
+void *escalonamentoPE() {
+    fila_processos *fila;
+
+    //Executa primeiro a fila de prioridade mais alta
+    pthread_mutex_lock(&fila_procs_mutex);
+    fila = fila_procs->fila_union.fila_prior.fila0;
+    pthread_mutex_unlock(&fila_procs_mutex);
+    executaFilaEscalonamentoPE(fila);
+    
+    pthread_mutex_lock(&fila_procs_mutex);
+    fila = fila_procs->fila_union.fila_prior.fila1;
+    pthread_mutex_unlock(&fila_procs_mutex);
+    executaFilaEscalonamentoPE(fila);
+    
+    //Executa por ultimo a fila de prioridade mais baixa
+    pthread_mutex_lock(&fila_procs_mutex);
+    fila = fila_procs->fila_union.fila_prior.fila2;
+    pthread_mutex_unlock(&fila_procs_mutex);
+    executaFilaEscalonamentoPE(fila);
+    
+    pthread_exit(NULL);
+}
+
 void *start(void *politica) {
     char *politica_escalonamento;
     pthread_t threads[3];
@@ -246,12 +306,12 @@ void *start(void *politica) {
     } else if (strcmp(politica_escalonamento, "RR") == 0) {
         pthread_create(&threads[2], &attr, escalonamentoRR, NULL);
     } else if(strcmp(politica_escalonamento, "PE") == 0) {
-        //TODO pthread_create(&threads[2], &attr, escalonamentoPE, NULL);
+        pthread_create(&threads[2], &attr, escalonamentoPE, NULL);
     } else if(strcmp(politica_escalonamento, "PD") == 0) {
         //TODO pthread_create(&threads[2], &attr, escalonamentoPD, NULL);
     } else {
         printf("Politica não reconhecida\n");
-        return 1;
+        pthread_exit(NULL);
     }
 
     pthread_join(threads[2], NULL);
