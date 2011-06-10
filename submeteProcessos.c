@@ -104,8 +104,6 @@ void *submeterProcessos(void *fila) {
     
     while (thread_status == EBUSY) {
     
-        ;
-        
         pthread_mutex_lock(&fila_procs_mutex);
         pthread_cond_wait(&fazer_operacao_submete_proc, &fila_procs_mutex);
         
