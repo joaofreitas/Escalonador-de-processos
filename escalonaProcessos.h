@@ -6,6 +6,8 @@
 
 fila_ready *criaFila(char *politica_escalonamento);
 
+void imprimeFila(fila_ready *fila);
+
 void *start(void *politica);
 
 void *executaProcessos();

@@ -8,7 +8,8 @@ void *menuPrincipal() {
         printf("Digite a opção desejada\n");
         printf("1. Carregar arquivos de processos a serem escalonados.\n");
         printf("2. Parar um processo.\n");
-        printf("3. Encerrar o escalonador\n");
+        printf("3. Encerrar o escalonador.\n");
+        printf("4. Imprimir Fila Atual.\n");
         scanf("%d", &op);
        
         switch(op) {
@@ -33,6 +34,9 @@ void *menuPrincipal() {
                 pthread_cond_signal(&fazer_operacao_submete_proc);
                 
                 termina_escalonador = 1;
+                break;
+            case 4 :
+                imprimeFila(fila_procs);
                 break;
         }
     }
