@@ -64,7 +64,7 @@ void *submeterProcessos(void *fila) {
 
     fila = (fila_ready *) fila;
     fp = fopen("arquivoProcessos", "r");
-    
+
     nome_processo = malloc(sizeof(char *)* 50); // Nome do processo pode ter no máximo 50 caracteres
     while ((fscanf(fp, "%s %d", nome_processo, &prioridade)) != EOF) {
         n = 0;

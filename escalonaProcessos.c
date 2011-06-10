@@ -1,10 +1,5 @@
 #include "escalonaProcessos.h"
 
-pthread_t threads_auxiliares[3];
-pthread_cond_t executa_submissao;   //Controla a submissão de processos
-pthread_mutex_t fila_procs_mutex;   //Mutex que controla o acesso a fila de processos
-fila_ready *fila_procs;             //Fila de todos os processos;
-
 fila_ready *criaFila(char *politica_escalonamento) {
     fila_ready *fila;
     
@@ -133,31 +128,6 @@ void *executaProcessos() {
     }
     imprimeFila(fila_procs);
     pthread_exit(NULL);
-}
-
-void criaThreads(pthread_t threads[1], char *politica_escalonamento) {
-    int thread_status1, thread_status2;
-    pthread_attr_t attr;
-
-    /* Initialize and set thread detached attribute */
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-    /* Initialize and set thread detached attribute */
-    /*pthread_cond_init (&executa_submissao, NULL);*/
-
-    fila_procs = criaFila(politica_escalonamento);
-
-    thread_status1 = pthread_create(&threads[0], &attr, submeterProcessos, (void *) fila_procs);
-    pthread_join(threads[0], NULL);
-
-    thread_status2 = pthread_create(&threads[1], NULL, executaProcessos, NULL);
-    
-
-    if (thread_status1 || thread_status2){
-        printf("ERROR; return code from pthread_create() is %d %d\n", thread_status1, thread_status2);
-        exit(-1);
-    }
-
 }
 
 void *escalonamentoFCFS() {
@@ -294,12 +264,13 @@ void *start(void *politica) {
     pthread_attr_t attr;
 
     politica_escalonamento = (char *) politica;
+    
+    fila_procs = criaFila(politica_escalonamento);
 
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
     pthread_mutex_init(&fila_procs_mutex, NULL);  
-    criaThreads(threads, politica_escalonamento);
 
     if (strcmp(politica_escalonamento, "FF") == 0) {
         pthread_create(&threads[2], &attr, escalonamentoFCFS, NULL);
@@ -313,8 +284,6 @@ void *start(void *politica) {
         printf("Politica não reconhecida\n");
         pthread_exit(NULL);
     }
-
-    pthread_join(threads[2], NULL);
 
     printf("Fim da execução!");
     

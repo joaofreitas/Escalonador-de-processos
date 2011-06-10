@@ -6,3 +6,17 @@
 
 void *start(void *politica);
 
+void *executaProcessos();
+
+void *escalonamentoFCFS();
+
+void *escalonamentoRR();
+
+void *escalonamentoPE();
+
+void *start(void *politica);
+
+pthread_t threads_auxiliares[3];
+pthread_cond_t executa_submissao;   //Controla a submissão de processos
+pthread_mutex_t fila_procs_mutex;   //Mutex que controla o acesso a fila de processos
+fila_ready *fila_procs;             //Fila de todos os processos;
