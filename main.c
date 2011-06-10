@@ -87,11 +87,6 @@ void criaThreadsPrincipais(char *politica_escalonamento) {
     criarThread(3, attr, iniciaEscalonamento, (void *) politica_escalonamento);
     
 //    pthread_join(threads_principais[0], NULL);
-//    thread_status = pthread_create(&threads_principais[1], NULL, executaProcessos, NULL);
-    
-
-    
-//    pthread_create(&threads_principais[0], NULL, start, (void *) politica_escalonamento);
 
 }
 

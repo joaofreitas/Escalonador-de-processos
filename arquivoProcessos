@@ -1,2 +1,5 @@
-./processos/ackermann 1 4 1
-./processos/fatorial 2 30
+./processos/ackermann 1 3 11
+./processos/fatorial 2 10
+./processos/ackermann3 1 3 11
+./processos/ackermann2 1 3 10
+

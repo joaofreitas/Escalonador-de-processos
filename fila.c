@@ -59,12 +59,31 @@ fila_processos * removerFila(fila_processos **fila) {
     
     elemento_removido = *fila;
     if (elemento_removido != NULL) {
-        *fila = elemento_removido->prox;
-        
-        free(elemento_removido->p1);
+        if (elemento_removido->prox == NULL) {
+            *fila = NULL;
+        } else {
+            *fila = elemento_removido->prox;
+        }
+
         free(elemento_removido);
     }
     return *fila;
+}
+
+int numeroElementos(fila_processos *fila) {
+    fila_processos *elemento;
+    int count;
+    
+    if (fila == NULL) {
+        count = 0;
+    } else {
+        count = 1;
+        elemento = fila;
+        while ((elemento = elemento->prox) != NULL) {
+            count++;
+        }
+    }
+    return count;
 }
 
 void removerProcessoFila(fila_processos **fila, int pid) {
