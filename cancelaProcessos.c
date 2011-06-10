@@ -1,22 +1,45 @@
 #include "cancelaProcessos.h"
 
-void encerraExecucao(int pid) {
+int percorreFilaRemoveProcesso(fila_processos **fila_prioridades, int pid) {
     fila_processos *fila;
     int status;
+
+    fila = *fila_prioridades;
     
-    if (fila_procs->tipo_fila == FILA_SEM_PRIORIDADES ) {
-        fila = fila_procs->fila_union.fila_sem_prior.fila;
-        while (fila != NULL) {
-            if (fila->p1->pid == pid) {
+    while (fila != NULL) {
+        if (fila->p1->pid == pid) {
+            if (pid != 0) {
                 printf("Pid %d removido\n", pid);
-                //Remover aqui
-/*                status = kill(pid, SIGTERM);
+
+                fila = fila->prox;
+                removerProcessoFila(&(*fila_prioridades), pid);
+                status = kill(pid, SIGTERM);
                 if (status < -1) {
                     printf("Erro ao terminar processo com pid = %d.\n", pid);
                 }
-*/            }
-            fila = fila->prox;
+                return 1;
+            }
+            
         }
+        fila = fila->prox;
+    }
+    
+    return 0;
+}
+
+void encerraExecucao(int pid) {
+    
+    if (fila_procs->tipo_fila == FILA_SEM_PRIORIDADES ) {
+        percorreFilaRemoveProcesso(&(fila_procs->fila_union.fila_sem_prior.fila), pid);
+    } else {
+        if (percorreFilaRemoveProcesso(&(fila_procs->fila_union.fila_prior.fila0), pid) == 0) {
+
+            if (percorreFilaRemoveProcesso(&(fila_procs->fila_union.fila_prior.fila1), pid) == 0) {
+
+                percorreFilaRemoveProcesso(&(fila_procs->fila_union.fila_prior.fila2), pid);
+            }
+        }
+        
     }
 /*  Fazer para PD  for () {
     
@@ -40,7 +63,7 @@ void *cancelarExecucaoProcessos(void *proc_id) {
             break;
         }
         
-        printf("pid: %d", proccess->value);
+        printf("pid: %d\n", proccess->value);
         encerraExecucao(proccess->value);
         pthread_mutex_unlock(&fila_procs_mutex);
         

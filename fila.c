@@ -67,6 +67,32 @@ fila_processos * removerFila(fila_processos **fila) {
     return *fila;
 }
 
+void removerProcessoFila(fila_processos **fila, int pid) {
+    fila_processos *fila_percorre,*fila_aux;
+    
+    fila_percorre = *fila;
+    
+
+    if (fila_percorre != NULL) {
+
+        if (fila_percorre->p1->pid != pid) {
+            while ((fila_percorre->prox != NULL) && (fila_percorre->prox->p1->pid != pid)) {
+                fila_percorre = fila_percorre->prox;
+            }
+            
+            if (fila_percorre->prox != NULL) {
+                fila_aux = fila_percorre->prox;
+                free(fila_percorre->prox);
+                fila_percorre->prox = fila_aux->prox;
+            }
+        } else {
+            fila_aux = (*fila);
+            (*fila) = (*fila)->prox;
+//            free(fila_aux);
+        }
+    }
+}
+
 //Função que imprime o processo, NAO VAI ESTAR NO TRABALHO FINAL
 void imprimeProcesso(fila_processos *fila) {
     int i;
