@@ -29,11 +29,7 @@ void escalonamentoFCFS() {
 
     /* Enquanto houver processos, executa o primeiro que está na fila*/
     while (thread_status == EBUSY) {
-        if (fila != NULL) {
-            printf("Fila nao nula\n");
-        } else {
-            printf("Fila nula\n");
-        }
+
         if (fila != NULL) {
             p1 = fila->p1;
             pid = p1->pid;
@@ -48,8 +44,8 @@ void escalonamentoFCFS() {
             
             /*Protege a área de memória onde fica a fila de processos, para a exclusão do processo executado*/
             pthread_mutex_lock(&fila_procs_mutex);
-            fila = fila->prox;
-            removerProcessoFila(&(fila_procs->fila_union.fila_sem_prior.fila), pid);
+            fila = removerFila(&(fila_procs->fila_union.fila_sem_prior.fila));
+            fila = fila_procs->fila_union.fila_sem_prior.fila;
             pthread_mutex_unlock(&fila_procs_mutex);
         } else {
             pthread_mutex_lock(&fila_procs_mutex);
@@ -62,8 +58,6 @@ void escalonamentoFCFS() {
             break;
         }
     }
-    
-    printf("Terminando escalonamento FF\n.");
 }
 
 void escalonamentoRR() {

@@ -79,6 +79,7 @@ void removerProcessoFila(fila_processos **fila, int pid) {
             while ((fila_percorre->prox != NULL) && (fila_percorre->prox->p1->pid != pid)) {
                 fila_percorre = fila_percorre->prox;
             }
+            printf("Encontrei o pid %d\n", fila_percorre->p1->pid);
             
             if (fila_percorre->prox != NULL) {
                 fila_aux = fila_percorre->prox;
@@ -86,6 +87,7 @@ void removerProcessoFila(fila_processos **fila, int pid) {
                 fila_percorre->prox = fila_aux->prox;
             }
         } else {
+            printf("Primeiro pid %d", fila_percorre->p1->pid);
             fila_aux = (*fila);
             (*fila) = (*fila)->prox;
 //            free(fila_aux);
