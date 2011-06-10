@@ -10,6 +10,7 @@
 typedef struct estrutura_processo {
     int pid;
 	time_t inicio_execucao;
+	time_t ultima_execucao;
 	int prioridade;
 	int num_params;
 	char *nome_arquivo;
