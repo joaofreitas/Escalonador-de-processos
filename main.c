@@ -4,8 +4,6 @@ void *menuPrincipal() {
     int termina_escalonador = 0;
     int op;
 
-    pthread_mutex_lock(&kill_threads_mutex);
-    
     while (termina_escalonador == 0) {
         printf("Digite a opção desejada\n");
         printf("1. Carregar arquivos de processos a serem escalonados.\n");
@@ -16,10 +14,8 @@ void *menuPrincipal() {
         switch(op) {
             case 1:
                 pthread_mutex_lock(&fila_procs_mutex);
-                printf("Vou carregar mais processos.\n");
                 pthread_cond_signal(&fazer_operacao_submete_proc);
                 pthread_mutex_unlock(&fila_procs_mutex);
-                printf("Operação concluída\n");
                 break;
             case 2 :
                 pthread_mutex_lock(&fila_procs_mutex);
@@ -44,7 +40,7 @@ void *menuPrincipal() {
     pthread_exit(NULL);
 }
 
-// Encapsulei a função de criação de thread por que aqui ela já faz o teste se deu certo ou não a criação
+// Encapsulada a função de criação de thread por que aqui ela já faz o teste se deu certo ou não a criação
 void criarThread(int thread_id, pthread_attr_t attr, void *(*rotina_inicio)(), void * parametros) {
     int thread_status;
     
@@ -56,16 +52,25 @@ void criarThread(int thread_id, pthread_attr_t attr, void *(*rotina_inicio)(), v
     }
 }
 
+void iniciarMutexes() {
+    pthread_mutex_init(&fila_procs_mutex, NULL);
+    pthread_mutex_init(&kill_threads_mutex, NULL);
+}
+
 void criaThreadsPrincipais(char *politica_escalonamento) {
     pthread_attr_t attr;
 
-    /* Initialize and set thread detached attribute */
+    iniciarMutexes();
+    //Esse semáforo vai controlar o encerramento de todas as threads. Por isso, deve iniciar antes de todo o código.
+    pthread_mutex_lock(&kill_threads_mutex);
+
     pthread_attr_init(&attr);
 //    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
     
     criarThread(0, attr, menuPrincipal, NULL);
 
-    fila_procs = criaFila(politica_escalonamento);    
+    fila_procs = criaFila(politica_escalonamento);
+    pthread_attr_init(&attr);
     criarThread(1, attr, submeterProcessos, (void *) fila_procs);
     
 //    pthread_join(threads_principais[0], NULL);

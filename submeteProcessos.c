@@ -56,39 +56,59 @@ void insereProcessoFila(fila_ready *fila, processo *proccess) {
     }
 }
 
+
+//FIX ME: Codigo absurdo!
 void *submeterProcessos(void *fila) {
-    char *nome_processo, *parametro, proximo_char;
+    int thread_status = 0;
     int prioridade = 0, tipo_fila, n;
+    char *nome_processo, *parametro, proximo_char;
     FILE *fp;
     processo *p1;
 
     fila = (fila_ready *) fila;
     fp = fopen("arquivoProcessos", "r");
-
-    nome_processo = malloc(sizeof(char *)* 50); // Nome do processo pode ter no máximo 50 caracteres
-    while ((fscanf(fp, "%s %d", nome_processo, &prioridade)) != EOF) {
-        n = 0;
-        p1 = cria_processo(nome_processo, prioridade);
-        n = copiaParametro(&(p1->parametros[n]), nome_processo, n);
-
-        while ((proximo_char = getc(fp)) != '\n') {
-            parametro = malloc(sizeof(char *) * 50); 
-            fscanf(fp, "%s", parametro);
-            n = copiaParametro(&(p1->parametros[n]), parametro, n);
-        }
-        p1->num_params = n;
-        p1->parametros[n] = (char *)0;
+    
+    thread_status = pthread_mutex_trylock(&kill_threads_mutex);
+    
+    while (thread_status == EBUSY) {
+    
+        thread_status = pthread_mutex_trylock(&kill_threads_mutex);
         
-        /*
-            Esse mutex é responsável por controlar o acesso na fila de processos.
-             Preciso fazer esse controle por que a fila vai estar sendo acessada
-            pelo escalonador também.
-        */
         pthread_mutex_lock(&fila_procs_mutex);
-        insereProcessoFila(fila, p1);
-        pthread_mutex_unlock(&fila_procs_mutex);
+        pthread_cond_wait(&fazer_operacao_submete_proc, &fila_procs_mutex);
+        
+        //Após a thread esperar por uma resposta, é necessário verificar se ela deve encerrar ou ainda deve inserir mais processos
+        if (pthread_mutex_trylock(&kill_threads_mutex) != EBUSY) {
+            printf("Opa peguei o sinal!\n");
+            nome_processo = malloc(sizeof(char *)* 50); // Nome do processo pode ter no máximo 50 caracteres
+            while ((fscanf(fp, "%s %d", nome_processo, &prioridade)) != EOF) {
+                n = 0;
+                p1 = cria_processo(nome_processo, prioridade);
+                n = copiaParametro(&(p1->parametros[n]), nome_processo, n);
 
-        nome_processo = malloc(sizeof(char *)* 50); // Nome do processo pode ter no máximo 50 caracteres
+                while ((proximo_char = getc(fp)) != '\n') {
+                    parametro = malloc(sizeof(char *) * 50); 
+                    fscanf(fp, "%s", parametro);
+                    n = copiaParametro(&(p1->parametros[n]), parametro, n);
+                }
+                p1->num_params = n;
+                p1->parametros[n] = (char *)0;
+                
+                /*
+                    Esse mutex é responsável por controlar o acesso na fila de processos.
+                     Preciso fazer esse controle por que a fila vai estar sendo acessada
+                    pelo escalonador também.
+                */
+                pthread_mutex_lock(&fila_procs_mutex);
+                insereProcessoFila(fila, p1);
+                pthread_mutex_unlock(&fila_procs_mutex);
+
+                nome_processo = malloc(sizeof(char *)* 50); // Nome do processo pode ter no máximo 50 caracteres
+                
+            }
+            printf("Carregado!\n");
+        }
+        
     }
     
     fclose(fp);
