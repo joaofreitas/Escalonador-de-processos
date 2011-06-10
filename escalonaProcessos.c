@@ -1,71 +1,72 @@
 #include "escalonaProcessos.h"
 
-/* Função que cria novos processo, porém paralisando todos antes da execução */
-void criaProcessos(fila_processos **fila) {
+/* Função que cria novos processo, porém paralisando-o antes da execução */
+void criaProcessos(processo *p1) {
     int pid, status;
-    processo *p1;
-    fila_processos *fila_aux;
     
-    pthread_mutex_lock(&fila_procs_mutex);
-    fila_aux = *fila;
-
-    while (fila_aux != NULL) {
-        p1 = fila_aux->p1;
-        if ((pid = fork()) == 0) {
-            status = execv(p1->nome_arquivo, p1->parametros);
-            if (status == -1) {
-                printf("O programa %s não existe.\n", p1->nome_arquivo);
-            }
-            exit(1);
+    if ((pid = fork()) == 0) {
+        status = execv(p1->nome_arquivo, p1->parametros);
+        if (status == -1) {
+            printf("O programa %s não existe.\n", p1->nome_arquivo);
         }
-        p1->pid = pid;
-        time(&p1->inicio_execucao);
-        kill(pid, SIGTSTP);	
-        fila_aux = fila_aux->prox;
+        exit(1);
     }
-    pthread_mutex_unlock(&fila_procs_mutex);
+    p1->pid = pid;
+    time(&p1->inicio_execucao);
+    kill(pid, SIGTSTP);
 }
 
-void *executaProcessos() {
-    
-    if (fila_procs->tipo_fila == FILA_SEM_PRIORIDADES) {
-        criaProcessos(&(fila_procs->fila_union.fila_sem_prior.fila));
-    } else {
-        criaProcessos(&(fila_procs->fila_union.fila_prior.fila0));
-        criaProcessos(&(fila_procs->fila_union.fila_prior.fila1));
-        criaProcessos(&(fila_procs->fila_union.fila_prior.fila2));
-    }
-    imprimeFila(fila_procs);
-    pthread_exit(NULL);
-}
-
-void *escalonamentoFCFS() {
-    int i, pid, status;
+void escalonamentoFCFS() {
+    int i, pid, status, thread_status;
     processo *p1;
     fila_processos *fila;
     
     pthread_mutex_lock(&fila_procs_mutex);
     fila = fila_procs->fila_union.fila_sem_prior.fila;
     pthread_mutex_unlock(&fila_procs_mutex);
+    
+    thread_status = pthread_mutex_trylock(&kill_threads_mutex);
 
     /* Enquanto houver processos, executa o primeiro que está na fila*/
-    while (fila != NULL) {
-        p1 = fila->p1;
-        pid = p1->pid;
-        printf("\n Executando o processo %s\n", p1->nome_arquivo);
-        kill(pid, SIGCONT);
-        waitpid(pid ,NULL, 0);
-        printf("\nProcesso executado com sucesso %s\n", p1->nome_arquivo);
-        
-        /*Protege a área de memória onde fica a fila de processos, para a exclusão do processo executado*/
-        pthread_mutex_lock(&fila_procs_mutex);
-        fila = removerFila(&(fila_procs->fila_union.fila_sem_prior.fila));
-        pthread_mutex_unlock(&fila_procs_mutex);
+    while (thread_status == EBUSY) {
+        if (fila != NULL) {
+            printf("Fila nao nula\n");
+        } else {
+            printf("Fila nula\n");
+        }
+        if (fila != NULL) {
+            p1 = fila->p1;
+            pid = p1->pid;
+            if (pid == 0) { //Essa condição verifica se o processo foi executado. Caso sim, seu pid certamente será maior que 0
+                criaProcessos(p1);
+            }
+            
+            printf("Executando processo %s, pid %d", p1->nome_arquivo, p1->pid);
+            kill(pid, SIGCONT);
+            waitpid(pid ,NULL, 0);
+            printf("\nProcesso executado com sucesso %s\n", p1->nome_arquivo);
+            
+            /*Protege a área de memória onde fica a fila de processos, para a exclusão do processo executado*/
+            pthread_mutex_lock(&fila_procs_mutex);
+            fila = fila->prox;
+            removerProcessoFila(&(fila_procs->fila_union.fila_sem_prior.fila), pid);
+            pthread_mutex_unlock(&fila_procs_mutex);
+        } else {
+            pthread_mutex_lock(&fila_procs_mutex);
+            fila = fila_procs->fila_union.fila_sem_prior.fila;
+            pthread_mutex_unlock(&fila_procs_mutex);
+        }
+
+        //Após a thread esperar por uma resposta, é necessário verificar se ela deve encerrar ou ainda deve inserir mais processos
+        if ((thread_status = pthread_mutex_trylock(&kill_threads_mutex)) != EBUSY) {
+            break;
+        }
     }
-    pthread_exit(NULL);
+    
+    printf("Terminando escalonamento FF\n.");
 }
 
-void *escalonamentoRR() {
+void escalonamentoRR() {
     int pid, status, childPid;
     processo *p1;
     fila_processos *fila;
@@ -79,32 +80,31 @@ void *escalonamentoRR() {
     while (fila != NULL) {
         p1 = fila->p1;
         pid = p1->pid;
-        if (pid > 0) {  //Essa condição verifica se o processo foi executado. Caso sim, seu pid certamente será maior que 0
-            //printf("Executando o processo %s de pid %d\n", p1->nome_arquivo, p1->pid);
+        if (pid == 0) {   //Essa condição verifica se o processo foi executado. Caso sim, seu pid certamente será maior que 0
+            criaProcessos(p1);
+        }
+        //printf("Executando o processo %s de pid %d\n", p1->nome_arquivo, p1->pid);
 
-            kill(pid, SIGCONT);
-            sleep(1);
-            kill(pid, SIGTSTP);
-            
-            //Verifica se houve algum processo parado com -1, o parametro WNOHANG serve para não deixar esperando eternamente.
-            childPid = waitpid(-1, &status, WNOHANG);
-            if (childPid > 0) {
-            
-                time(&fim_execucao);
-                printf("\nProcesso %s concluido com sucesso. Tempo total %ld\n", p1->nome_arquivo, (fim_execucao - p1->inicio_execucao));
+        kill(pid, SIGCONT);
+        sleep(1);
+        kill(pid, SIGTSTP);
+        
+        //Verifica se houve algum processo parado com -1, o parametro WNOHANG serve para não deixar esperando eternamente.
+        childPid = waitpid(-1, &status, WNOHANG);
+        if (childPid > 0) {
+        
+            time(&fim_execucao);
+            printf("\nProcesso %s concluido com sucesso. Tempo total %ld\n", p1->nome_arquivo, (fim_execucao - p1->inicio_execucao));
 
-                pthread_mutex_lock(&fila_procs_mutex);
-                fila = removerFila(&(fila_procs->fila_union.fila_sem_prior.fila));
-                pthread_mutex_unlock(&fila_procs_mutex);
-            } else {
-                pthread_mutex_lock(&fila_procs_mutex);
-                fila = mudarOrdemFila(&(fila_procs->fila_union.fila_sem_prior.fila));
-                pthread_mutex_unlock(&fila_procs_mutex);
-            }
-
+            pthread_mutex_lock(&fila_procs_mutex);
+            fila = removerFila(&(fila_procs->fila_union.fila_sem_prior.fila));
+            pthread_mutex_unlock(&fila_procs_mutex);
+        } else {
+            pthread_mutex_lock(&fila_procs_mutex);
+            fila = mudarOrdemFila(&(fila_procs->fila_union.fila_sem_prior.fila));
+            pthread_mutex_unlock(&fila_procs_mutex);
         }
     }
-    pthread_exit(NULL);
 }
 
 void executaFilaEscalonamentoPE(fila_processos *fila) {
@@ -117,34 +117,34 @@ void executaFilaEscalonamentoPE(fila_processos *fila) {
     while (fila != NULL) {
         p1 = fila->p1;
         pid = p1->pid;
-        if (pid > 0) {  //Essa condição verifica se o processo foi executado. Caso sim, seu pid certamente será maior que 0
-            //printf("Executando o processo %s de pid %d\n", p1->nome_arquivo, p1->pid);
-
-            kill(pid, SIGCONT);
-            sleep(1);
-            kill(pid, SIGTSTP);
-            
-            //Verifica se houve algum processo parado com -1, o parametro WNOHANG serve para não deixar esperando eternamente.
-            childPid = waitpid(-1, &status, WNOHANG);
-            if (childPid > 0) {
-            
-                time(&fim_execucao);
-                printf("\nProcesso %s concluido com sucesso. Tempo total %ld\n", p1->nome_arquivo, (fim_execucao - p1->inicio_execucao));
-
-                pthread_mutex_lock(&fila_procs_mutex);
-                fila = removerFila(&inicio_fila);
-                pthread_mutex_unlock(&fila_procs_mutex);
-            } else {
-                pthread_mutex_lock(&fila_procs_mutex);
-                fila = mudarOrdemFila(&inicio_fila);
-                pthread_mutex_unlock(&fila_procs_mutex);
-            }
-
+        if (pid == 0) {   //Essa condição verifica se o processo foi executado. Caso sim, seu pid certamente será maior que 0
+            criaProcessos(p1);
         }
+
+        kill(pid, SIGCONT);
+        sleep(1);
+        kill(pid, SIGTSTP);
+        
+        //Verifica se houve algum processo parado com -1, o parametro WNOHANG serve para não deixar esperando eternamente.
+        childPid = waitpid(-1, &status, WNOHANG);
+        if (childPid > 0) {
+        
+            time(&fim_execucao);
+            printf("\nProcesso %s concluido com sucesso. Tempo total %ld\n", p1->nome_arquivo, (fim_execucao - p1->inicio_execucao));
+
+            pthread_mutex_lock(&fila_procs_mutex);
+            fila = removerFila(&inicio_fila);
+            pthread_mutex_unlock(&fila_procs_mutex);
+        } else {
+            pthread_mutex_lock(&fila_procs_mutex);
+            fila = mudarOrdemFila(&inicio_fila);
+            pthread_mutex_unlock(&fila_procs_mutex);
+        }
+
     }
 }
 
-void *escalonamentoPE() {
+void escalonamentoPE() {
     fila_processos *fila;
 
     //Executa primeiro a fila de prioridade mais alta
@@ -164,7 +164,6 @@ void *escalonamentoPE() {
     pthread_mutex_unlock(&fila_procs_mutex);
     executaFilaEscalonamentoPE(fila);
     
-    pthread_exit(NULL);
 }
 
 void executaFilaEscalonamentoPD(fila_processos *fila){
@@ -181,11 +180,12 @@ void executaFilaEscalonamentoPD(fila_processos *fila){
 		p1 = fila->p1;
         pid = p1->pid;
         
-        if(pid > 0){
-			kill(pid, SIGCONT);
-			sleep(p1->prioridade);
-			kill(pid, SIGTSTP);
-		}
+        if (pid == 0) {   //Essa condição verifica se o processo foi executado. Caso sim, seu pid certamente será maior que 0
+            criaProcessos(p1);
+        }
+		kill(pid, SIGCONT);
+		sleep(p1->prioridade);
+		kill(pid, SIGTSTP);
             
         //Verifica se houve algum processo parado com -1, o parametro WNOHANG serve para não deixar esperando eternamente.
         childPid = waitpid(-1, &status, WNOHANG);
@@ -208,7 +208,7 @@ void executaFilaEscalonamentoPD(fila_processos *fila){
 	}
 }
 
-void *escalonamentoPD(){
+void escalonamentoPD(){
     fila_processos *fila;
 	
     //Executa primeiro a fila de prioridade mais alta
@@ -218,26 +218,28 @@ void *escalonamentoPD(){
     executaFilaEscalonamentoPD(fila);
 }
 
-void *start(void *politica) {
+void *iniciaEscalonamento(void *politica) {
     char *politica_escalonamento;
-    pthread_t threads[3];
+    
+    politica_escalonamento = (char *) politica;
+/*    pthread_t threads[3];
     pthread_attr_t attr;
 
-    politica_escalonamento = (char *) politica;
     
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
     pthread_mutex_init(&fila_procs_mutex, NULL);  
-
+*/
+    printf("Politica: %s\n", politica_escalonamento);
     if (strcmp(politica_escalonamento, "FF") == 0) {
-        pthread_create(&threads[2], &attr, escalonamentoFCFS, NULL);
+        escalonamentoFCFS();
     } else if (strcmp(politica_escalonamento, "RR") == 0) {
-        pthread_create(&threads[2], &attr, escalonamentoRR, NULL);
+        escalonamentoRR();
     } else if(strcmp(politica_escalonamento, "PE") == 0) {
-        pthread_create(&threads[2], &attr, escalonamentoPE, NULL);
+        escalonamentoPE();
     } else if(strcmp(politica_escalonamento, "PD") == 0) {
-        pthread_create(&threads[2], &attr, escalonamentoPD, NULL);
+        escalonamentoPD();
     } else {
         printf("Politica não reconhecida\n");
         pthread_exit(NULL);
