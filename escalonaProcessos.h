@@ -3,10 +3,9 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include "submeteProcessos.h"
+#include "fila.h"
 
 fila_ready *criaFila(char *politica_escalonamento);
-
-void imprimeFila(fila_ready *fila);
 
 void *start(void *politica);
 

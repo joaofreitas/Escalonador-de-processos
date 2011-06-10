@@ -76,11 +76,6 @@ FILE * leituraArquivo(FILE *fp, fila_ready *fila) {
         p1->num_params = n;
         p1->parametros[n] = (char *)0;
         
-        /*
-            Esse mutex é responsável por controlar o acesso na fila de processos.
-             Preciso fazer esse controle por que a fila vai estar sendo acessada
-            pelo escalonador também.
-        */
         insereProcessoFila(fila, p1);
 
         nome_processo = malloc(sizeof(char *)* 50); // Nome do processo pode ter no máximo 50 caracteres

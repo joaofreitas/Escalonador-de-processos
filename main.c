@@ -1,8 +1,8 @@
 #include "main.h"
 
 void *menuPrincipal() {
-    int termina_escalonador = 0;
     int op;
+    int termina_escalonador = 0;
 
     while (termina_escalonador == 0) {
         printf("Digite a opção desejada\n");
@@ -20,7 +20,8 @@ void *menuPrincipal() {
                 break;
             case 2 :
                 pthread_mutex_lock(&fila_procs_mutex);
-                printf("Vou parar um processo.\n");
+                printf("Digite um pid: ");
+                scanf("%d", &proc_id->value);
                 pthread_cond_signal(&fazer_operacao_cancela_proc);
                 pthread_mutex_unlock(&fila_procs_mutex);
                 printf("Operação concluída\n");
@@ -63,7 +64,7 @@ void iniciarMutexes() {
 
 void criaThreadsPrincipais(char *politica_escalonamento) {
     pthread_attr_t attr;
-
+    
     iniciarMutexes();
     //Esse semáforo vai controlar o encerramento de todas as threads. Por isso, deve iniciar antes de todo o código.
     pthread_mutex_lock(&kill_threads_mutex);
@@ -76,6 +77,11 @@ void criaThreadsPrincipais(char *politica_escalonamento) {
     fila_procs = criaFila(politica_escalonamento);
     pthread_attr_init(&attr);
     criarThread(1, attr, submeterProcessos, (void *) fila_procs);
+    
+    pthread_attr_init(&attr);
+    proc_id = malloc(sizeof(proccess_id));
+    proc_id->value = 0;
+    criarThread(2, attr, cancelarExecucaoProcessos, (void *) proc_id);
     
 //    pthread_join(threads_principais[0], NULL);
 //    thread_status = pthread_create(&threads_principais[1], NULL, executaProcessos, NULL);
