@@ -104,13 +104,13 @@ void *submeterProcessos(void *fila) {
     
     while (thread_status == EBUSY) {
     
-        thread_status = pthread_mutex_trylock(&kill_threads_mutex);
+        ;
         
         pthread_mutex_lock(&fila_procs_mutex);
         pthread_cond_wait(&fazer_operacao_submete_proc, &fila_procs_mutex);
         
         //Após a thread esperar por uma resposta, é necessário verificar se ela deve encerrar ou ainda deve inserir mais processos
-        if (pthread_mutex_trylock(&kill_threads_mutex) != EBUSY) { 
+        if ((thread_status = pthread_mutex_trylock(&kill_threads_mutex)) != EBUSY) { 
             break;
         }
         fp = leituraArquivo(fp, fila_rdy);
