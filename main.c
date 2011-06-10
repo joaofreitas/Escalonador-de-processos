@@ -4,39 +4,43 @@ void *menuPrincipal() {
     int termina_escalonador = 0;
     int op;
 
-    printf("LOOOOOOL!\n");
-    
     pthread_mutex_lock(&kill_threads_mutex);
-    pthread_create( &thread2, NULL, functionCount1, NULL);
     
     while (termina_escalonador == 0) {
         printf("Digite a opção desejada\n");
-        printf("1. Carregar arquivos de threads a serem escalonadas\n");
-        printf("2. Digite a opção desejada\n");
-        printf("3. Digite a opção desejada\n");
+        printf("1. Carregar arquivos de processos a serem escalonados.\n");
+        printf("2. Parar um processo.\n");
+        printf("3. Encerrar o escalonador\n");
         scanf("%d", &op);
        
         switch(op) {
             case 1:
-                printf("%d", op);
+                pthread_mutex_lock(&fila_procs_mutex);
+                printf("Vou carregar mais processos.\n");
+                pthread_cond_signal(&fazer_operacao_submete_proc);
+                pthread_mutex_unlock(&fila_procs_mutex);
+                printf("Operação concluída\n");
                 break;
             case 2 :
-                pthread_mutex_lock(&operacao_mutex);
-                printf("%d. Vou fazer a operação.\n", op);
-                pthread_cond_signal(&fazer_operacao);
-                pthread_mutex_unlock(&operacao_mutex);
+                pthread_mutex_lock(&fila_procs_mutex);
+                printf("Vou parar um processo.\n");
+                pthread_cond_signal(&fazer_operacao_cancela_proc);
+                pthread_mutex_unlock(&fila_procs_mutex);
                 printf("Operação concluída\n");
                 break;
             case 3 :
-                printf("%d. Vou cancelar a execução.\n", op);
+                printf("Vou cancelar a execução do escalonador.\n");
                 pthread_mutex_unlock(&kill_threads_mutex);
-                pthread_cond_signal(&fazer_operacao);
+                
+                //Preciso alertar minhas threads, embora não vão realizar essas ações
+                pthread_cond_signal(&fazer_operacao_cancela_proc);
+                pthread_cond_signal(&fazer_operacao_submete_proc);
+                
                 termina_escalonador = 1;
                 break;
         }
     }
     
-    pthread_join( thread2, NULL); 
     pthread_exit(NULL);
 }
 
@@ -60,6 +64,9 @@ void criaThreadsPrincipais(char *politica_escalonamento) {
 //    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
     
     criarThread(0, attr, menuPrincipal, NULL);
+
+    fila_procs = criaFila(politica_escalonamento);    
+    criarThread(1, attr, submeterProcessos, (void *) fila_procs);
     
 //    pthread_join(threads_principais[0], NULL);
 //    thread_status = pthread_create(&threads_principais[1], NULL, executaProcessos, NULL);
@@ -73,11 +80,13 @@ void criaThreadsPrincipais(char *politica_escalonamento) {
 int main(int argc, char *argv[]) {
     
     if ((argc != 2)) {
-        printf("Por favor, execute novamente informando o tipo do escalonamento:\n");
-        printf("FORMA DE EXECUÇÃO:\n./escalonaprocessos <tipo escalonamento>\n");
+        printf("Por favor, execute novamente informando o tipo do escalonamento:\n\n");
+        printf("FORMA DE EXECUÇÃO:\n./escalonaprocessos <tipo escalonamento>\n\n");
         printf("TIPOS DE ESCALONAMENTO:\n");
         printf("FF\tFirst Come, First Served\n");
         printf("RR\tRound Robin\n");
+        printf("PE\tPrioridade Estática\n");
+        printf("PD\tPrioridade Dinâmica\n");
         exit(0);
     }
     

@@ -36,7 +36,6 @@ void *functionCount1() {
     pthread_exit(NULL);
 }
 
-// Write numbers 4-7
 void *functionThreadMenu() {
     int termina_escalonador = 0;
     int op;

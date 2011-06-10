@@ -265,8 +265,6 @@ void *start(void *politica) {
 
     politica_escalonamento = (char *) politica;
     
-    fila_procs = criaFila(politica_escalonamento);
-
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
