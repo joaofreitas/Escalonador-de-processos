@@ -61,7 +61,7 @@ void escalonamentoFCFS() {
 }
 
 void escalonamentoRR() {
-    int pid, status, childPid;
+    int status, childPid, thread_status;
     processo *p1;
     fila_processos *fila;
     time_t fim_execucao;
@@ -69,34 +69,49 @@ void escalonamentoRR() {
     pthread_mutex_lock(&fila_procs_mutex);
     fila = fila_procs->fila_union.fila_sem_prior.fila;
     pthread_mutex_unlock(&fila_procs_mutex);
+    
+    thread_status = pthread_mutex_trylock(&kill_threads_mutex);
 
-    /* No momento, ele faz diferente de null. Na verdade, ele deve receber o sinal de outra thread para terminar!*/
-    while (fila != NULL) {
-        p1 = fila->p1;
-        pid = p1->pid;
-        if (pid == 0) {   //Essa condição verifica se o processo foi executado. Caso sim, seu pid certamente será maior que 0
-            criaProcessos(p1);
-        }
-        //printf("Executando o processo %s de pid %d\n", p1->nome_arquivo, p1->pid);
+    /* Enquanto houver processos, executa o primeiro que está na fila*/
+    while (thread_status == EBUSY) {
+        if (fila != NULL) {
+            p1 = fila->p1;
+            if (p1->pid == 0) {   //Essa condição verifica se o processo foi executado. Caso sim, seu pid certamente será maior que 0
+                criaProcessos(p1);
+            }
+            printf("Executando o processo %s de pid %d\n", p1->nome_arquivo, p1->pid);
 
-        kill(pid, SIGCONT);
-        sleep(1);
-        kill(pid, SIGTSTP);
-        
-        //Verifica se houve algum processo parado com -1, o parametro WNOHANG serve para não deixar esperando eternamente.
-        childPid = waitpid(-1, &status, WNOHANG);
-        if (childPid > 0) {
-        
-            time(&fim_execucao);
-            printf("\nProcesso %s concluido com sucesso. Tempo total %ld\n", p1->nome_arquivo, (fim_execucao - p1->inicio_execucao));
+            kill(p1->pid, SIGCONT);
+            sleep(1);
+            kill(p1->pid, SIGTSTP);
+            
+            printf("proc_id %d\n", p1->pid);
+            
+            //Verifica se houve algum processo parado com -1, o parametro WNOHANG serve para não deixar esperando eternamente.
+            childPid = waitpid(-1, &status, WNOHANG);
+            printf("cpid %d\n", childPid);
+            if (childPid > 0) {
+            
+                time(&fim_execucao);
+                printf("\nProcesso %s concluido com sucesso. Tempo total %ld\n", p1->nome_arquivo, (fim_execucao - p1->inicio_execucao));
 
-            pthread_mutex_lock(&fila_procs_mutex);
-            fila = removerFila(&(fila_procs->fila_union.fila_sem_prior.fila));
-            pthread_mutex_unlock(&fila_procs_mutex);
+                pthread_mutex_lock(&fila_procs_mutex);
+                fila = removerFila(&(fila_procs->fila_union.fila_sem_prior.fila));
+                pthread_mutex_unlock(&fila_procs_mutex);
+            } else {
+                pthread_mutex_lock(&fila_procs_mutex);
+                fila = mudarOrdemFila(&(fila_procs->fila_union.fila_sem_prior.fila));
+                pthread_mutex_unlock(&fila_procs_mutex);
+            }
         } else {
             pthread_mutex_lock(&fila_procs_mutex);
-            fila = mudarOrdemFila(&(fila_procs->fila_union.fila_sem_prior.fila));
+            fila = fila_procs->fila_union.fila_sem_prior.fila;
             pthread_mutex_unlock(&fila_procs_mutex);
+        }
+        
+        //Após a thread esperar por uma resposta, é necessário verificar se ela deve encerrar ou ainda deve inserir mais processos
+        if ((thread_status = pthread_mutex_trylock(&kill_threads_mutex)) != EBUSY) {
+            break;
         }
     }
 }
