@@ -1,5 +1,17 @@
 #include "fila.h"
 
+int compara(processo *p1, processo *p2){
+	if ((*p1).prioridade > (*p2).prioridade){
+		return 1;
+	}else if ((*p1).prioridade == (*p2).prioridade){
+		return 0;
+	}else if ((*p1).prioridade < (*p2).prioridade){
+		return -1;
+	}
+}
+
+
+
 fila_ready *criaFila(char *politica_escalonamento) {
     fila_ready *fila;
     
@@ -89,4 +101,10 @@ void imprimeFila(fila_ready *fila) {
         printf("FILA 2:\n");
         imprimeProcesso(fila->fila_union.fila_prior.fila2);
     }
+}
+
+void OrdenaFilaPD(fila_processos **fila){
+
+	qsort(*fila, sizeof(processo), sizeof(int), (void*) compara);
+	return;
 }

@@ -171,9 +171,11 @@ void executaFilaEscalonamentoPD(fila_processos *fila){
 	int pid, status, childPid;
     processo *p1;
     fila_processos *inicio_fila;
-    time_t fim_time_exec;
+    time_t fim_execucao;
     
     inicio_fila = fila;
+    
+    OrdenaFilaPD(&fila); //Ordena fila pelas prioridades iniciais
     
     while(fila != NULL){
 		p1 = fila->p1;
@@ -181,48 +183,39 @@ void executaFilaEscalonamentoPD(fila_processos *fila){
         
         if(pid > 0){
 			kill(pid, SIGCONT);
-			sleep(random());
+			sleep(p1->prioridade);
 			kill(pid, SIGTSTP);
-			
-		//Verifica se houve algum processo parado com -1, o parametro WNOHANG serve para não deixar esperando eternamente.
-            childPid = waitpid(-1, &status, WNOHANG);
-            if (childPid > 0) {
+		}
             
-                time(&fim_time_exec);
-                printf("\nProcesso %s concluido com sucesso. Tempo total %ld\n", p1->nome_arquivo, (fim_time_exec - p1->inicio_execucao));
+        //Verifica se houve algum processo parado com -1, o parametro WNOHANG serve para não deixar esperando eternamente.
+        childPid = waitpid(-1, &status, WNOHANG);
+        if (childPid > 0) {
+            
+            time(&fim_execucao);
+            printf("\nProcesso =%s concluido com sucesso. Tempo total %ld\n", p1->nome_arquivo, (fim_execucao - p1->inicio_execucao));
 
-                pthread_mutex_lock(&fila_procs_mutex);
-                fila = removerFila(&inicio_fila);
-                pthread_mutex_unlock(&fila_procs_mutex);
-            } else {
-                pthread_mutex_lock(&fila_procs_mutex);
-                fila = mudarOrdemFila(&inicio_fila);
-                pthread_mutex_unlock(&fila_procs_mutex);
-            }
-
+            pthread_mutex_lock(&fila_procs_mutex);
+            fila = removerFila(&inicio_fila);
+            pthread_mutex_unlock(&fila_procs_mutex);
+        } else {
+            pthread_mutex_lock(&fila_procs_mutex);
+			p1->prioridade = (int) ((7/3) * random() * p1->prioridade);
+			OrdenaFilaPD(&fila);
+            pthread_mutex_unlock(&fila_procs_mutex);
         }
+
+
 	}
 }
 
 void *escalonamentoPD(){
-	fila_processos *fila;
+    fila_processos *fila;
 	
     //Executa primeiro a fila de prioridade mais alta
     pthread_mutex_lock(&fila_procs_mutex);
     fila = fila_procs->fila_union.fila_prior.fila0;
     pthread_mutex_unlock(&fila_procs_mutex);
     executaFilaEscalonamentoPD(fila);
-    
-    pthread_mutex_lock(&fila_procs_mutex);
-    fila = fila_procs->fila_union.fila_prior.fila1;
-    pthread_mutex_unlock(&fila_procs_mutex);
-    executaFilaEscalonamentoPD(fila);
-    
-    //Executa por ultimo a fila de prioridade mais baixa
-    pthread_mutex_lock(&fila_procs_mutex);
-    fila = fila_procs->fila_union.fila_prior.fila2;
-    pthread_mutex_unlock(&fila_procs_mutex);
-    executaFilaEscalonamentoPD(fila);	
 }
 
 void *start(void *politica) {

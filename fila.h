@@ -57,4 +57,7 @@ void imprimeFila(fila_ready *fila);
 fila_ready *criaFila(char *politica_escalonamento);
 fila_processos * mudarOrdemFila(fila_processos **fila);
 
+int compara(processo *x, processo *y);
+void OrdenaFilaPD(fila_processos **fila);
+
 #endif
