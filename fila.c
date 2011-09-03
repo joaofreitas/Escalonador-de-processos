@@ -150,8 +150,22 @@ void imprimeFila(fila_ready *fila) {
     }
 }
 
-void OrdenaFilaPD(fila_processos **fila){
-
-	qsort(*fila, sizeof(processo), sizeof(int), (void*) compara);
-	return;
+void OrdenaFila(fila_processos **fila){
+	fila_processos *f1;
+	processo *aux;
+	int troca;
+	
+	f1 = *fila;
+	while(f1 != NULL){
+		if(f1->prox != NULL){
+			if(f1->p1->prioridade < f1->prox->p1->prioridade){
+				aux = f1->p1;
+				f1 = f1->prox;
+				f1->prox->p1 = aux;
+				troca = 1; 
+			}
+		}
+		f1 = f1->prox;
+	}
 }
+

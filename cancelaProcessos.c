@@ -41,9 +41,6 @@ void encerraExecucao(int pid) {
         }
         
     }
-/*  Fazer para PD  for () {
-    
-    } */
 }
 
 void *cancelarExecucaoProcessos(void *proc_id) {
@@ -68,6 +65,8 @@ void *cancelarExecucaoProcessos(void *proc_id) {
         pthread_mutex_unlock(&fila_procs_mutex);
         
     }
+    
+    printf("Encerrando thread de cancelamento\n");
     
     pthread_exit(NULL);
 }

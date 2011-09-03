@@ -6,7 +6,6 @@
 
 pthread_t threads_principais[4];
 
-pthread_cond_t fazer_operacao_cancela_proc;
 pthread_mutex_t kill_threads_mutex; //Mutex que controla a morte de todas as threads
 pthread_mutex_t fila_procs_mutex; //Mutex que controla a fila de prioridades das threads
 pthread_cond_t fazer_operacao_submete_proc = PTHREAD_COND_INITIALIZER;

@@ -210,46 +210,57 @@ void escalonamentoPE() {
 }
 
 void executaFilaEscalonamentoPD(fila_processos *fila){
-	int pid, status, childPid;
+	int pid, status, childPid, thread_status;
     processo *p1;
     fila_processos *inicio_fila;
     time_t fim_execucao;
     
-    inicio_fila = fila;
+
     
-    OrdenaFilaPD(&fila); //Ordena fila pelas prioridades iniciais
+    thread_status = pthread_mutex_trylock(&kill_threads_mutex);
     
-    while(fila != NULL){
-		p1 = fila->p1;
-        pid = p1->pid;
-        
-        if (pid == 0) {   //Essa condição verifica se o processo foi executado. Caso sim, seu pid certamente será maior que 0
-            criaProcessos(p1);
-        }
-		kill(pid, SIGCONT);
-		sleep(p1->prioridade);
-		kill(pid, SIGTSTP);
-            
-        //Verifica se houve algum processo parado com -1, o parametro WNOHANG serve para não deixar esperando eternamente.
-        childPid = waitpid(-1, &status, WNOHANG);
-        if (childPid > 0) {
-            
-            time(&fim_execucao);
-            printf("\nProcesso =%s concluido com sucesso. Tempo total %ld\n", p1->nome_arquivo, (fim_execucao - p1->inicio_execucao));
-
-            pthread_mutex_lock(&fila_procs_mutex);
-            fila = removerFila(&inicio_fila);
-            pthread_mutex_unlock(&fila_procs_mutex);
-        } else {
-            pthread_mutex_lock(&fila_procs_mutex);
-			p1->prioridade = (int) ((7/3) * random() * p1->prioridade);
-			OrdenaFilaPD(&fila);
-            pthread_mutex_unlock(&fila_procs_mutex);
-        }
-
-
+    while (thread_status == EBUSY) {
+		if(fila != NULL){
+			OrdenaFila(&fila);
+			inicio_fila = fila;
+			p1 = fila->p1;
+			
+			//printf("processo: %s\n pid %d\n\n\n", p1->nome_arquivo, p1->pid);
+			
+			if (p1->pid == 0) {   //Essa condição verifica se o processo foi executado. Caso sim, seu pid certamente será maior que 0
+				criaProcessos(p1);
+			}
+			
+			kill(p1->pid, SIGCONT);
+			sleep(p1->prioridade);
+			kill(p1->pid, SIGTSTP);	
+				
+			//Verifica se houve algum processo parado com -1, o parametro WNOHANG serve para não deixar esperando eternamente.
+			childPid = waitpid(-1, &status, WNOHANG);
+			if (childPid > 0) {
+				time(&fim_execucao);
+				printf("\nProcesso =%s concluido com sucesso. Tempo total %ld\n", p1->nome_arquivo, (fim_execucao - p1->inicio_execucao));
+				pthread_mutex_lock(&fila_procs_mutex);
+				fila = removerFila(&inicio_fila);
+				pthread_mutex_unlock(&fila_procs_mutex);
+			} else {
+				time(&fim_execucao);
+				pthread_mutex_lock(&fila_procs_mutex);
+				if((fim_execucao - p1->inicio_execucao) < p1->prioridade)
+					p1->prioridade = (int)  (0.5*p1->prioridade);
+				else
+					p1->prioridade = (int)  (2*p1->prioridade);
+				fila = removerFila(&inicio_fila);
+				pthread_mutex_unlock(&fila_procs_mutex);
+			}
+		}else{
+			pthread_mutex_lock(&fila_procs_mutex);
+			fila = fila_procs->fila_union.fila_prior.fila0;
+			pthread_mutex_unlock(&fila_procs_mutex);
+		}
 	}
 }
+
 
 void escalonamentoPD(){
     fila_processos *fila;
@@ -265,15 +276,7 @@ void *iniciaEscalonamento(void *politica) {
     char *politica_escalonamento;
     
     politica_escalonamento = (char *) politica;
-/*    pthread_t threads[3];
-    pthread_attr_t attr;
 
-    
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-
-    pthread_mutex_init(&fila_procs_mutex, NULL);  
-*/
     if (strcmp(politica_escalonamento, "FF") == 0) {
         escalonamentoFCFS();
     } else if (strcmp(politica_escalonamento, "RR") == 0) {

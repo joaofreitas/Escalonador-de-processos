@@ -111,6 +111,8 @@ void *submeterProcessos(void *fila) {
         
     }
     
+    printf("Encerrando thread de submissão\n");
+    
     fclose(fp);
     pthread_exit(NULL);
 }
